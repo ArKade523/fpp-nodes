@@ -1,6 +1,5 @@
 <script>
-	import NodeEditor from './NodeEditor.svelte';
+	import Tabs from './Tabs.svelte';
 </script>
   
-<NodeEditor />
-  
+<Tabs /> 

@@ -27,12 +27,24 @@ var app = (function () {
     function is_empty(obj) {
         return Object.keys(obj).length === 0;
     }
-
-    const globals = (typeof window !== 'undefined'
-        ? window
-        : typeof globalThis !== 'undefined'
-            ? globalThis
-            : global);
+    function validate_store(store, name) {
+        if (store != null && typeof store.subscribe !== 'function') {
+            throw new Error(`'${name}' is not a store with a 'subscribe' method`);
+        }
+    }
+    function subscribe(store, ...callbacks) {
+        if (store == null) {
+            return noop;
+        }
+        const unsub = store.subscribe(...callbacks);
+        return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
+    }
+    function component_subscribe(component, store, callback) {
+        component.$$.on_destroy.push(subscribe(store, callback));
+    }
+    function append(target, node) {
+        target.appendChild(node);
+    }
     function insert(target, node, anchor) {
         target.insertBefore(node, anchor || null);
     }
@@ -43,6 +55,19 @@ var app = (function () {
     }
     function element(name) {
         return document.createElement(name);
+    }
+    function text(data) {
+        return document.createTextNode(data);
+    }
+    function space() {
+        return text(' ');
+    }
+    function empty() {
+        return text('');
+    }
+    function listen(node, event, handler, options) {
+        node.addEventListener(event, handler, options);
+        return () => node.removeEventListener(event, handler, options);
     }
     function attr(node, attribute, value) {
         if (value == null)
@@ -188,6 +213,19 @@ var app = (function () {
     }
     const outroing = new Set();
     let outros;
+    function group_outros() {
+        outros = {
+            r: 0,
+            c: [],
+            p: outros // parent group
+        };
+    }
+    function check_outros() {
+        if (!outros.r) {
+            run_all(outros.c);
+        }
+        outros = outros.p;
+    }
     function transition_in(block, local) {
         if (block && block.i) {
             outroing.delete(block);
@@ -211,6 +249,99 @@ var app = (function () {
         }
         else if (callback) {
             callback();
+        }
+    }
+    function outro_and_destroy_block(block, lookup) {
+        transition_out(block, 1, 1, () => {
+            lookup.delete(block.key);
+        });
+    }
+    function update_keyed_each(old_blocks, dirty, get_key, dynamic, ctx, list, lookup, node, destroy, create_each_block, next, get_context) {
+        let o = old_blocks.length;
+        let n = list.length;
+        let i = o;
+        const old_indexes = {};
+        while (i--)
+            old_indexes[old_blocks[i].key] = i;
+        const new_blocks = [];
+        const new_lookup = new Map();
+        const deltas = new Map();
+        const updates = [];
+        i = n;
+        while (i--) {
+            const child_ctx = get_context(ctx, list, i);
+            const key = get_key(child_ctx);
+            let block = lookup.get(key);
+            if (!block) {
+                block = create_each_block(key, child_ctx);
+                block.c();
+            }
+            else if (dynamic) {
+                // defer updates until all the DOM shuffling is done
+                updates.push(() => block.p(child_ctx, dirty));
+            }
+            new_lookup.set(key, new_blocks[i] = block);
+            if (key in old_indexes)
+                deltas.set(key, Math.abs(i - old_indexes[key]));
+        }
+        const will_move = new Set();
+        const did_move = new Set();
+        function insert(block) {
+            transition_in(block, 1);
+            block.m(node, next);
+            lookup.set(block.key, block);
+            next = block.first;
+            n--;
+        }
+        while (o && n) {
+            const new_block = new_blocks[n - 1];
+            const old_block = old_blocks[o - 1];
+            const new_key = new_block.key;
+            const old_key = old_block.key;
+            if (new_block === old_block) {
+                // do nothing
+                next = new_block.first;
+                o--;
+                n--;
+            }
+            else if (!new_lookup.has(old_key)) {
+                // remove old block
+                destroy(old_block, lookup);
+                o--;
+            }
+            else if (!lookup.has(new_key) || will_move.has(new_key)) {
+                insert(new_block);
+            }
+            else if (did_move.has(old_key)) {
+                o--;
+            }
+            else if (deltas.get(new_key) > deltas.get(old_key)) {
+                did_move.add(new_key);
+                insert(new_block);
+            }
+            else {
+                will_move.add(old_key);
+                o--;
+            }
+        }
+        while (o--) {
+            const old_block = old_blocks[o];
+            if (!new_lookup.has(old_block.key))
+                destroy(old_block, lookup);
+        }
+        while (n)
+            insert(new_blocks[n - 1]);
+        run_all(updates);
+        return new_blocks;
+    }
+    function validate_each_keys(ctx, list, get_context, get_key) {
+        const keys = new Set();
+        for (let i = 0; i < list.length; i++) {
+            const key = get_key(get_context(ctx, list, i));
+            if (keys.has(key)) {
+                throw new Error('Cannot have duplicate keys in a keyed each');
+            }
+            keys.add(key);
         }
     }
     function create_component(block) {
@@ -352,6 +483,10 @@ var app = (function () {
     function dispatch_dev(type, detail) {
         document.dispatchEvent(custom_event(type, Object.assign({ version: '3.59.2' }, detail), { bubbles: true }));
     }
+    function append_dev(target, node) {
+        dispatch_dev('SvelteDOMInsert', { target, node });
+        append(target, node);
+    }
     function insert_dev(target, node, anchor) {
         dispatch_dev('SvelteDOMInsert', { target, node, anchor });
         insert(target, node, anchor);
@@ -360,6 +495,21 @@ var app = (function () {
         dispatch_dev('SvelteDOMRemove', { node });
         detach(node);
     }
+    function listen_dev(node, event, handler, options, has_prevent_default, has_stop_propagation, has_stop_immediate_propagation) {
+        const modifiers = options === true ? ['capture'] : options ? Array.from(Object.keys(options)) : [];
+        if (has_prevent_default)
+            modifiers.push('preventDefault');
+        if (has_stop_propagation)
+            modifiers.push('stopPropagation');
+        if (has_stop_immediate_propagation)
+            modifiers.push('stopImmediatePropagation');
+        dispatch_dev('SvelteDOMAddEventListener', { node, event, handler, modifiers });
+        const dispose = listen(node, event, handler, options);
+        return () => {
+            dispatch_dev('SvelteDOMRemoveEventListener', { node, event, handler, modifiers });
+            dispose();
+        };
+    }
     function attr_dev(node, attribute, value) {
         attr(node, attribute, value);
         if (value == null)
@@ -367,10 +517,45 @@ var app = (function () {
         else
             dispatch_dev('SvelteDOMSetAttribute', { node, attribute, value });
     }
+    function set_data_dev(text, data) {
+        data = '' + data;
+        if (text.data === data)
+            return;
+        dispatch_dev('SvelteDOMSetData', { node: text, data });
+        text.data = data;
+    }
+    function validate_each_argument(arg) {
+        if (typeof arg !== 'string' && !(arg && typeof arg === 'object' && 'length' in arg)) {
+            let msg = '{#each} only iterates over array-like objects.';
+            if (typeof Symbol === 'function' && arg && Symbol.iterator in arg) {
+                msg += ' You can use a spread to convert this iterable into an array.';
+            }
+            throw new Error(msg);
+        }
+    }
     function validate_slots(name, slot, keys) {
         for (const slot_key of Object.keys(slot)) {
             if (!~keys.indexOf(slot_key)) {
                 console.warn(`<${name}> received an unexpected slot "${slot_key}".`);
+            }
+        }
+    }
+    function construct_svelte_component_dev(component, props) {
+        const error_message = 'this={...} of <svelte:component> should specify a Svelte component.';
+        try {
+            const instance = new component(props);
+            if (!instance.$$ || !instance.$set || !instance.$on || !instance.$destroy) {
+                throw new Error(error_message);
+            }
+            return instance;
+        }
+        catch (err) {
+            const { message } = err;
+            if (typeof message === 'string' && message.indexOf('is not a constructor') !== -1) {
+                throw new Error(error_message);
+            }
+            else {
+                throw err;
             }
         }
     }
@@ -392,6 +577,220 @@ var app = (function () {
         }
         $capture_state() { }
         $inject_state() { }
+    }
+
+    const subscriber_queue = [];
+    /**
+     * Create a `Writable` store that allows both updating and reading by subscription.
+     * @param {*=}value initial value
+     * @param {StartStopNotifier=} start
+     */
+    function writable(value, start = noop) {
+        let stop;
+        const subscribers = new Set();
+        function set(new_value) {
+            if (safe_not_equal(value, new_value)) {
+                value = new_value;
+                if (stop) { // store is ready
+                    const run_queue = !subscriber_queue.length;
+                    for (const subscriber of subscribers) {
+                        subscriber[1]();
+                        subscriber_queue.push(subscriber, value);
+                    }
+                    if (run_queue) {
+                        for (let i = 0; i < subscriber_queue.length; i += 2) {
+                            subscriber_queue[i][0](subscriber_queue[i + 1]);
+                        }
+                        subscriber_queue.length = 0;
+                    }
+                }
+            }
+        }
+        function update(fn) {
+            set(fn(value));
+        }
+        function subscribe(run, invalidate = noop) {
+            const subscriber = [run, invalidate];
+            subscribers.add(subscriber);
+            if (subscribers.size === 1) {
+                stop = start(set) || noop;
+            }
+            run(value);
+            return () => {
+                subscribers.delete(subscriber);
+                if (subscribers.size === 0 && stop) {
+                    stop();
+                    stop = null;
+                }
+            };
+        }
+        return { set, update, subscribe };
+    }
+
+    /* src/Tab.svelte generated by Svelte v3.59.2 */
+
+    const file$2 = "src/Tab.svelte";
+
+    function create_fragment$3(ctx) {
+    	let button;
+    	let t0;
+    	let t1_value = /*tab*/ ctx[0].id + "";
+    	let t1;
+    	let button_class_value;
+    	let mounted;
+    	let dispose;
+
+    	const block = {
+    		c: function create() {
+    			button = element("button");
+    			t0 = text("Tab ");
+    			t1 = text(t1_value);
+
+    			attr_dev(button, "class", button_class_value = "tab-list-item " + (/*$activeTab*/ ctx[2] === /*tab*/ ctx[0].id
+    			? 'active'
+    			: ''));
+
+    			add_location(button, file$2, 16, 2, 287);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, button, anchor);
+    			append_dev(button, t0);
+    			append_dev(button, t1);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(button, "click", /*selectTab*/ ctx[3], false, false, false, false),
+    					listen_dev(button, "keydown", /*handleKeyDown*/ ctx[4], false, false, false, false)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*tab*/ 1 && t1_value !== (t1_value = /*tab*/ ctx[0].id + "")) set_data_dev(t1, t1_value);
+
+    			if (dirty & /*$activeTab, tab*/ 5 && button_class_value !== (button_class_value = "tab-list-item " + (/*$activeTab*/ ctx[2] === /*tab*/ ctx[0].id
+    			? 'active'
+    			: ''))) {
+    				attr_dev(button, "class", button_class_value);
+    			}
+    		},
+    		i: noop,
+    		o: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(button);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$3.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$3($$self, $$props, $$invalidate) {
+    	let $activeTab,
+    		$$unsubscribe_activeTab = noop,
+    		$$subscribe_activeTab = () => ($$unsubscribe_activeTab(), $$unsubscribe_activeTab = subscribe(activeTab, $$value => $$invalidate(2, $activeTab = $$value)), activeTab);
+
+    	$$self.$$.on_destroy.push(() => $$unsubscribe_activeTab());
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots('Tab', slots, []);
+    	let { tab } = $$props;
+    	let { activeTab } = $$props;
+    	validate_store(activeTab, 'activeTab');
+    	$$subscribe_activeTab();
+
+    	const selectTab = () => {
+    		activeTab.set(tab.id);
+    	};
+
+    	const handleKeyDown = event => {
+    		// Only respond to Enter key
+    		if (event.key === 'Enter') {
+    			selectTab();
+    		}
+    	};
+
+    	$$self.$$.on_mount.push(function () {
+    		if (tab === undefined && !('tab' in $$props || $$self.$$.bound[$$self.$$.props['tab']])) {
+    			console.warn("<Tab> was created without expected prop 'tab'");
+    		}
+
+    		if (activeTab === undefined && !('activeTab' in $$props || $$self.$$.bound[$$self.$$.props['activeTab']])) {
+    			console.warn("<Tab> was created without expected prop 'activeTab'");
+    		}
+    	});
+
+    	const writable_props = ['tab', 'activeTab'];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<Tab> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$$set = $$props => {
+    		if ('tab' in $$props) $$invalidate(0, tab = $$props.tab);
+    		if ('activeTab' in $$props) $$subscribe_activeTab($$invalidate(1, activeTab = $$props.activeTab));
+    	};
+
+    	$$self.$capture_state = () => ({
+    		tab,
+    		activeTab,
+    		selectTab,
+    		handleKeyDown,
+    		$activeTab
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ('tab' in $$props) $$invalidate(0, tab = $$props.tab);
+    		if ('activeTab' in $$props) $$subscribe_activeTab($$invalidate(1, activeTab = $$props.activeTab));
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [tab, activeTab, $activeTab, selectTab, handleKeyDown];
+    }
+
+    class Tab extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$3, create_fragment$3, safe_not_equal, { tab: 0, activeTab: 1 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Tab",
+    			options,
+    			id: create_fragment$3.name
+    		});
+    	}
+
+    	get tab() {
+    		throw new Error("<Tab>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set tab(value) {
+    		throw new Error("<Tab>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get activeTab() {
+    		throw new Error("<Tab>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set activeTab(value) {
+    		throw new Error("<Tab>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
     }
 
     /*!
@@ -4519,19 +4918,151 @@ var app = (function () {
       zoomAt: zoomAt
     };
 
+    const universalSocket = new index$2.Socket('Universal');
+    const numSocket = new index$2.Socket('Number');
+
+    numSocket.combineWith(universalSocket);
+    universalSocket.combineWith(numSocket);
+    universalSocket.compatibleWith = s => {
+        return true;
+    };
+
+    class NumControl extends index$2.Control {
+        constructor(emitter, key, readonly) {
+            super(key);
+            this.render = 'js';
+            this.emitter = emitter;
+            this.key = key;
+            this.template = `<input type="number" :readonly="readonly" :value="value" @input="change($event)"/>`;
+
+            this.scope = {
+                value: 0,
+                readonly,
+                change: this.change.bind(this)
+            };
+        }
+
+        setValue(val) {
+            this.scope.value = val;
+        }
+
+        change(e){
+            this.setValue(e.target.value);
+            this.update();
+        }
+
+        update() {
+            if (this.key)
+                this.putData(this.key, parseFloat(this.scope.value));
+        }
+
+        mounted() {
+            this.update();
+        }
+
+        setValue(val) {
+            this.scope.value = val;
+            this._alight.scan();
+        }
+    }
+
+
+    class NumComponent extends index$2.Component {
+        constructor(){
+            super("Number");
+        }
+
+        builder(node) {
+
+            let out1 = new index$2.Output('num', "Number", numSocket);
+            let in1 = new index$2.Input('num1', "Number", numSocket);
+
+            const numControl = new NumControl(this.editor, 'num', false);
+
+            return node
+            .addControl(numControl)
+            .addOutput(out1)
+            .addInput(in1)
+        }
+
+        worker(node, inputs, outputs) {
+            outputs['num'] = node.data.num;
+        }
+    }
+
+    class TextControl extends index$2.Control {
+        constructor(emitter, key, readonly) {
+            super(key);
+            this.render = 'js';
+            this.emitter = emitter;
+            this.key = key;
+            this.template = `<input type="text" :readonly="readonly" :value="value" @input="change($event)"/>`;
+
+            this.scope = {
+            value: "",
+            readonly,
+            change: this.change.bind(this)
+            };
+        }
+
+        setValue(val) {
+            this.scope.value = val;
+        }
+
+        change(e){
+            this.setValue(e.target.value);
+            this.update();
+        }
+
+        update() {
+            if (this.key)
+            this.putData(this.key, this.scope.value);
+        }
+
+        mounted() {
+            this.update();
+        }
+
+        setValue(val) {
+            this.scope.value = val;
+            this._alight.scan();
+        }
+    }
+
+    class TextInputComponent extends index$2.Component {
+        constructor(){
+            super("TextInput");
+        }
+
+        builder(node) {
+            let in1 = new index$2.Input('text', "Text", universalSocket);
+            const textControl = new TextControl(this.editor, 'text', false);
+
+            return node
+            .addControl(textControl)
+            .addInput(in1);
+        }
+
+        worker(node, inputs, outputs) {
+            const text = inputs['text'].length ? inputs['text'][0] : node.data.text;
+            console.log(text);
+            const control = this.editor.nodes.find(n => n.id == node.id).controls.get('text');
+            control.scope.value = text;
+            control.update();
+        }
+    }
+
     /* src/NodeEditor.svelte generated by Svelte v3.59.2 */
+    const file$1 = "src/NodeEditor.svelte";
 
-    const { console: console_1 } = globals;
-    const file = "src/NodeEditor.svelte";
-
-    function create_fragment$1(ctx) {
+    function create_fragment$2(ctx) {
     	let div;
 
     	const block = {
     		c: function create() {
     			div = element("div");
     			attr_dev(div, "id", "rete");
-    			add_location(div, file, 176, 0, 4159);
+    			add_location(div, file$1, 46, 0, 1312);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -4549,7 +5080,7 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$1.name,
+    		id: create_fragment$2.name,
     		type: "component",
     		source: "",
     		ctx
@@ -4558,133 +5089,9 @@ var app = (function () {
     	return block;
     }
 
-    function instance$1($$self, $$props, $$invalidate) {
+    function instance$2($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots('NodeEditor', slots, []);
-    	const numSocket = new index$2.Socket('Number value');
-    	const universalSocket = new index$2.Socket('Universal');
-    	numSocket.combineWith(universalSocket);
-    	universalSocket.combineWith(numSocket);
-
-    	universalSocket.compatibleWith = s => {
-    		return true;
-    	};
-
-    	class NumControl extends index$2.Control {
-    		constructor(emitter, key, readonly) {
-    			super(key);
-    			this.render = 'js';
-    			this.emitter = emitter;
-    			this.key = key;
-    			this.template = `<input type="number" :readonly="readonly" :value="value" @input="change($event)"/>`;
-
-    			this.scope = {
-    				value: 0,
-    				readonly,
-    				change: this.change.bind(this)
-    			};
-    		}
-
-    		setValue(val) {
-    			this.scope.value = val;
-    		}
-
-    		change(e) {
-    			this.setValue(e.target.value);
-    			this.update();
-    		}
-
-    		update() {
-    			if (this.key) this.putData(this.key, parseFloat(this.scope.value));
-    		}
-
-    		mounted() {
-    			this.update();
-    		}
-
-    		setValue(val) {
-    			this.scope.value = val;
-    			this._alight.scan();
-    		}
-    	}
-
-    	class NumComponent extends index$2.Component {
-    		constructor() {
-    			super("Number");
-    		}
-
-    		builder(node) {
-    			let out1 = new index$2.Output('num', "Number", numSocket);
-    			let in1 = new index$2.Input('num1', "Number", numSocket);
-    			const numControl = new NumControl(this.editor, 'num', false);
-    			return node.addControl(numControl).addOutput(out1).addInput(in1);
-    		}
-
-    		worker(node, inputs, outputs) {
-    			outputs['num'] = node.data.num;
-    		}
-    	}
-
-    	class TextControl extends index$2.Control {
-    		constructor(emitter, key, readonly) {
-    			super(key);
-    			this.render = 'js';
-    			this.emitter = emitter;
-    			this.key = key;
-    			this.template = `<input type="text" :readonly="readonly" :value="value" @input="change($event)"/>`;
-
-    			this.scope = {
-    				value: "",
-    				readonly,
-    				change: this.change.bind(this)
-    			};
-    		}
-
-    		setValue(val) {
-    			this.scope.value = val;
-    		}
-
-    		change(e) {
-    			this.setValue(e.target.value);
-    			this.update();
-    		}
-
-    		update() {
-    			if (this.key) this.putData(this.key, this.scope.value);
-    		}
-
-    		mounted() {
-    			this.update();
-    		}
-
-    		setValue(val) {
-    			this.scope.value = val;
-    			this._alight.scan();
-    		}
-    	}
-
-    	class TextInputComponent extends index$2.Component {
-    		constructor() {
-    			super("TextInput");
-    		}
-
-    		builder(node) {
-    			let in1 = new index$2.Input('text', "Text", universalSocket);
-    			const textControl = new TextControl(this.editor, 'text', false);
-    			return node.addControl(textControl).addInput(in1);
-    		}
-
-    		worker(node, inputs, outputs) {
-    			const text = inputs['text'].length
-    			? inputs['text'][0]
-    			: node.data.text;
-
-    			console.log(text);
-    			const control = this.editor.nodes.find(n => n.id == node.id).controls.get('text');
-    			control.scope.value = text;
-    			control.update();
-    		}
-    	}
 
     	onMount(async () => {
     		const container = document.querySelector('#rete');
@@ -4717,7 +5124,7 @@ var app = (function () {
     	const writable_props = [];
 
     	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console_1.warn(`<NodeEditor> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<NodeEditor> was created with unknown prop '${key}'`);
     	});
 
     	$$self.$capture_state = () => ({
@@ -4726,11 +5133,7 @@ var app = (function () {
     		ConnectionPlugin: index$1,
     		AlightRenderPlugin,
     		AreaPlugin: index,
-    		numSocket,
-    		universalSocket,
-    		NumControl,
     		NumComponent,
-    		TextControl,
     		TextInputComponent
     	});
 
@@ -4740,11 +5143,304 @@ var app = (function () {
     class NodeEditor extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$1, create_fragment$1, safe_not_equal, {});
+    		init(this, options, instance$2, create_fragment$2, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "NodeEditor",
+    			options,
+    			id: create_fragment$2.name
+    		});
+    	}
+    }
+
+    /* src/Tabs.svelte generated by Svelte v3.59.2 */
+    const file = "src/Tabs.svelte";
+
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[6] = list[i];
+    	return child_ctx;
+    }
+
+    // (20:8) {#each $tabs as tab (tab.id)}
+    function create_each_block(key_1, ctx) {
+    	let first;
+    	let tab;
+    	let current;
+
+    	tab = new Tab({
+    			props: {
+    				tab: /*tab*/ ctx[6],
+    				activeTab: /*activeTab*/ ctx[3]
+    			},
+    			$$inline: true
+    		});
+
+    	const block = {
+    		key: key_1,
+    		first: null,
+    		c: function create() {
+    			first = empty();
+    			create_component(tab.$$.fragment);
+    			this.first = first;
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, first, anchor);
+    			mount_component(tab, target, anchor);
+    			current = true;
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+    			const tab_changes = {};
+    			if (dirty & /*$tabs*/ 1) tab_changes.tab = /*tab*/ ctx[6];
+    			tab.$set(tab_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tab.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(tab.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(first);
+    			destroy_component(tab, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block.name,
+    		type: "each",
+    		source: "(20:8) {#each $tabs as tab (tab.id)}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$1(ctx) {
+    	let div2;
+    	let button;
+    	let t1;
+    	let div1;
+    	let ul;
+    	let each_blocks = [];
+    	let each_1_lookup = new Map();
+    	let t2;
+    	let div0;
+    	let switch_instance;
+    	let current;
+    	let mounted;
+    	let dispose;
+    	let each_value = /*$tabs*/ ctx[0];
+    	validate_each_argument(each_value);
+    	const get_key = ctx => /*tab*/ ctx[6].id;
+    	validate_each_keys(ctx, each_value, get_each_context, get_key);
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		let child_ctx = get_each_context(ctx, each_value, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block(key, child_ctx));
+    	}
+
+    	var switch_value = /*$tabs*/ ctx[0].find(/*func*/ ctx[5]).content;
+
+    	function switch_props(ctx) {
+    		return { $$inline: true };
+    	}
+
+    	if (switch_value) {
+    		switch_instance = construct_svelte_component_dev(switch_value, switch_props());
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div2 = element("div");
+    			button = element("button");
+    			button.textContent = "Add Tab";
+    			t1 = space();
+    			div1 = element("div");
+    			ul = element("ul");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t2 = space();
+    			div0 = element("div");
+    			if (switch_instance) create_component(switch_instance.$$.fragment);
+    			attr_dev(button, "id", "add-tab-button");
+    			add_location(button, file, 16, 4, 439);
+    			attr_dev(ul, "class", "tab-list");
+    			add_location(ul, file, 18, 6, 531);
+    			attr_dev(div0, "class", "tab-content");
+    			add_location(div0, file, 23, 6, 661);
+    			attr_dev(div1, "class", "tabs");
+    			add_location(div1, file, 17, 4, 506);
+    			attr_dev(div2, "id", "app");
+    			add_location(div2, file, 15, 0, 420);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div2, anchor);
+    			append_dev(div2, button);
+    			append_dev(div2, t1);
+    			append_dev(div2, div1);
+    			append_dev(div1, ul);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				if (each_blocks[i]) {
+    					each_blocks[i].m(ul, null);
+    				}
+    			}
+
+    			append_dev(div1, t2);
+    			append_dev(div1, div0);
+    			if (switch_instance) mount_component(switch_instance, div0, null);
+    			current = true;
+
+    			if (!mounted) {
+    				dispose = listen_dev(button, "click", /*addTab*/ ctx[4], false, false, false, false);
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*$tabs, activeTab*/ 9) {
+    				each_value = /*$tabs*/ ctx[0];
+    				validate_each_argument(each_value);
+    				group_outros();
+    				validate_each_keys(ctx, each_value, get_each_context, get_key);
+    				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, ul, outro_and_destroy_block, create_each_block, null, get_each_context);
+    				check_outros();
+    			}
+
+    			if (dirty & /*$tabs, $activeTab*/ 3 && switch_value !== (switch_value = /*$tabs*/ ctx[0].find(/*func*/ ctx[5]).content)) {
+    				if (switch_instance) {
+    					group_outros();
+    					const old_component = switch_instance;
+
+    					transition_out(old_component.$$.fragment, 1, 0, () => {
+    						destroy_component(old_component, 1);
+    					});
+
+    					check_outros();
+    				}
+
+    				if (switch_value) {
+    					switch_instance = construct_svelte_component_dev(switch_value, switch_props());
+    					create_component(switch_instance.$$.fragment);
+    					transition_in(switch_instance.$$.fragment, 1);
+    					mount_component(switch_instance, div0, null);
+    				} else {
+    					switch_instance = null;
+    				}
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+
+    			for (let i = 0; i < each_value.length; i += 1) {
+    				transition_in(each_blocks[i]);
+    			}
+
+    			if (switch_instance) transition_in(switch_instance.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				transition_out(each_blocks[i]);
+    			}
+
+    			if (switch_instance) transition_out(switch_instance.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div2);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].d();
+    			}
+
+    			if (switch_instance) destroy_component(switch_instance);
+    			mounted = false;
+    			dispose();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$1.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$1($$self, $$props, $$invalidate) {
+    	let $tabs;
+    	let $activeTab;
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots('Tabs', slots, []);
+    	let tabs = writable([{ id: 1, content: NodeEditor }]);
+    	validate_store(tabs, 'tabs');
+    	component_subscribe($$self, tabs, value => $$invalidate(0, $tabs = value));
+    	let activeTab = writable(1);
+    	validate_store(activeTab, 'activeTab');
+    	component_subscribe($$self, activeTab, value => $$invalidate(1, $activeTab = value));
+
+    	const addTab = () => {
+    		let id = Math.max(...$tabs.map(t => t.id)) + 1;
+    		tabs.update(t => [...t, { id, content: NodeEditor }]);
+    		activeTab.set(id);
+    	};
+
+    	const writable_props = [];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<Tabs> was created with unknown prop '${key}'`);
+    	});
+
+    	const func = t => t.id === $activeTab;
+
+    	$$self.$capture_state = () => ({
+    		writable,
+    		Tab,
+    		NodeEditor,
+    		tabs,
+    		activeTab,
+    		addTab,
+    		$tabs,
+    		$activeTab
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ('tabs' in $$props) $$invalidate(2, tabs = $$props.tabs);
+    		if ('activeTab' in $$props) $$invalidate(3, activeTab = $$props.activeTab);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [$tabs, $activeTab, tabs, activeTab, addTab, func];
+    }
+
+    class Tabs extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$1, create_fragment$1, safe_not_equal, {});
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Tabs",
     			options,
     			id: create_fragment$1.name
     		});
@@ -4754,33 +5450,33 @@ var app = (function () {
     /* src/App.svelte generated by Svelte v3.59.2 */
 
     function create_fragment(ctx) {
-    	let nodeeditor;
+    	let tabs;
     	let current;
-    	nodeeditor = new NodeEditor({ $$inline: true });
+    	tabs = new Tabs({ $$inline: true });
 
     	const block = {
     		c: function create() {
-    			create_component(nodeeditor.$$.fragment);
+    			create_component(tabs.$$.fragment);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			mount_component(nodeeditor, target, anchor);
+    			mount_component(tabs, target, anchor);
     			current = true;
     		},
     		p: noop,
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(nodeeditor.$$.fragment, local);
+    			transition_in(tabs.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
-    			transition_out(nodeeditor.$$.fragment, local);
+    			transition_out(tabs.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(nodeeditor, detaching);
+    			destroy_component(tabs, detaching);
     		}
     	};
 
@@ -4804,7 +5500,7 @@ var app = (function () {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<App> was created with unknown prop '${key}'`);
     	});
 
-    	$$self.$capture_state = () => ({ NodeEditor });
+    	$$self.$capture_state = () => ({ Tabs });
     	return [];
     }
 
