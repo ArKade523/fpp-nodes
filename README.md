@@ -24,3 +24,8 @@ To start the Electron app, run the following command:
 ```shell
 npm start
 ```
+
+To import an example JSON file, import the file located at
+```shell
+<cloned-directory>/json/example.json
+```
