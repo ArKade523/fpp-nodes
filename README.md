@@ -2,6 +2,8 @@
 
 This Electron app is designed to interface with the F' (F-Prime) flight software framework. It provides functionality to generate .fpp files and graphically display the topology of the component-based design.
 
+__NOTE__: This project is currently nonfunctional and exists as a proof of concept
+
 ## Prerequisites
 
 Before running the Electron app, make sure you have the following dependencies installed:
