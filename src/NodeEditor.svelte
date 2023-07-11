@@ -8,9 +8,6 @@
   import TextInputComponent from './components/TextInputComponent.js';
   
   onMount(async () => {
-    
-
-
     const container = document.querySelector('#rete');
     const editor = new Rete.NodeEditor('demo@0.1.0', container);
     editor.use(ConnectionPlugin);
@@ -25,22 +22,11 @@
       engine.register(c);
     });
 
-    const n1 = await components[0].createNode({num: 2});
-    n1.position = [80, 200];
+    // Assuming jsonData contains your JSON from the file
+    const response = await fetch('../json/test.json');
+    const jsonData = await response.json();
 
-    const n2 = await components[0].createNode({num: 3});
-    n2.position = [180, 300];
-    editor.addNode(n2);
-
-    const n3 = await components[0].createNode({num: 4});
-    n3.position = [280, 400];
-    editor.addNode(n3);
-
-    const text1 = await components[1].createNode({text: "Hello"});
-    text1.position = [180, 100];
-    editor.addNode(text1);
-
-    editor.addNode(n1);
+    await editor.fromJSON(jsonData);
   });
 </script>
 

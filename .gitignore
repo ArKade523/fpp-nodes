@@ -90,3 +90,6 @@ typings/
 
 # Electron-Forge
 out/
+
+# Build directory
+public/build/

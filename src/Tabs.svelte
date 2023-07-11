@@ -8,7 +8,8 @@
   
     const addTab = () => {
       let id = Math.max(...$tabs.map(t => t.id)) + 1;
-      tabs.update(t => [...t, {id, content: NodeEditor}]);
+      let newNodeEditor = new NodeEditor();
+      tabs.update(t => [...t, {id, content: newNodeEditor}]);
       activeTab.set(id);
     }
 </script>

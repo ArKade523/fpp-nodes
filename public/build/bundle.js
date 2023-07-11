@@ -632,38 +632,39 @@ var app = (function () {
     const file$2 = "src/Tab.svelte";
 
     function create_fragment$3(ctx) {
-    	let button;
+    	let li;
     	let t0;
     	let t1_value = /*tab*/ ctx[0].id + "";
     	let t1;
-    	let button_class_value;
+    	let li_class_value;
     	let mounted;
     	let dispose;
 
     	const block = {
     		c: function create() {
-    			button = element("button");
+    			li = element("li");
     			t0 = text("Tab ");
     			t1 = text(t1_value);
 
-    			attr_dev(button, "class", button_class_value = "tab-list-item " + (/*$activeTab*/ ctx[2] === /*tab*/ ctx[0].id
+    			attr_dev(li, "class", li_class_value = "tab-list-item " + (/*$activeTab*/ ctx[2] === /*tab*/ ctx[0].id
     			? 'active'
     			: ''));
 
-    			add_location(button, file$2, 16, 2, 287);
+    			attr_dev(li, "tabindex", "0");
+    			add_location(li, file$2, 16, 0, 255);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, button, anchor);
-    			append_dev(button, t0);
-    			append_dev(button, t1);
+    			insert_dev(target, li, anchor);
+    			append_dev(li, t0);
+    			append_dev(li, t1);
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(button, "click", /*selectTab*/ ctx[3], false, false, false, false),
-    					listen_dev(button, "keydown", /*handleKeyDown*/ ctx[4], false, false, false, false)
+    					listen_dev(li, "click", /*selectTab*/ ctx[3], false, false, false, false),
+    					listen_dev(li, "keydown", /*handleKeyDown*/ ctx[4], false, false, false, false)
     				];
 
     				mounted = true;
@@ -672,16 +673,16 @@ var app = (function () {
     		p: function update(ctx, [dirty]) {
     			if (dirty & /*tab*/ 1 && t1_value !== (t1_value = /*tab*/ ctx[0].id + "")) set_data_dev(t1, t1_value);
 
-    			if (dirty & /*$activeTab, tab*/ 5 && button_class_value !== (button_class_value = "tab-list-item " + (/*$activeTab*/ ctx[2] === /*tab*/ ctx[0].id
+    			if (dirty & /*$activeTab, tab*/ 5 && li_class_value !== (li_class_value = "tab-list-item " + (/*$activeTab*/ ctx[2] === /*tab*/ ctx[0].id
     			? 'active'
     			: ''))) {
-    				attr_dev(button, "class", button_class_value);
+    				attr_dev(li, "class", li_class_value);
     			}
     		},
     		i: noop,
     		o: noop,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(button);
+    			if (detaching) detach_dev(li);
     			mounted = false;
     			run_all(dispose);
     		}
@@ -5062,7 +5063,7 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			attr_dev(div, "id", "rete");
-    			add_location(div, file$1, 46, 0, 1312);
+    			add_location(div, file$1, 32, 0, 1037);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5107,18 +5108,11 @@ var app = (function () {
     			engine.register(c);
     		});
 
-    		const n1 = await components[0].createNode({ num: 2 });
-    		n1.position = [80, 200];
-    		const n2 = await components[0].createNode({ num: 3 });
-    		n2.position = [180, 300];
-    		editor.addNode(n2);
-    		const n3 = await components[0].createNode({ num: 4 });
-    		n3.position = [280, 400];
-    		editor.addNode(n3);
-    		const text1 = await components[1].createNode({ text: "Hello" });
-    		text1.position = [180, 100];
-    		editor.addNode(text1);
-    		editor.addNode(n1);
+    		// Assuming jsonData contains your JSON from the file
+    		const response = await fetch('../json/test.json');
+
+    		const jsonData = await response.json();
+    		await editor.fromJSON(jsonData);
     	});
 
     	const writable_props = [];
@@ -5163,7 +5157,7 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (20:8) {#each $tabs as tab (tab.id)}
+    // (21:8) {#each $tabs as tab (tab.id)}
     function create_each_block(key_1, ctx) {
     	let first;
     	let tab;
@@ -5215,7 +5209,7 @@ var app = (function () {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(20:8) {#each $tabs as tab (tab.id)}",
+    		source: "(21:8) {#each $tabs as tab (tab.id)}",
     		ctx
     	});
 
@@ -5274,15 +5268,15 @@ var app = (function () {
     			div0 = element("div");
     			if (switch_instance) create_component(switch_instance.$$.fragment);
     			attr_dev(button, "id", "add-tab-button");
-    			add_location(button, file, 16, 4, 439);
+    			add_location(button, file, 17, 4, 486);
     			attr_dev(ul, "class", "tab-list");
-    			add_location(ul, file, 18, 6, 531);
+    			add_location(ul, file, 19, 6, 578);
     			attr_dev(div0, "class", "tab-content");
-    			add_location(div0, file, 23, 6, 661);
+    			add_location(div0, file, 24, 6, 708);
     			attr_dev(div1, "class", "tabs");
-    			add_location(div1, file, 17, 4, 506);
+    			add_location(div1, file, 18, 4, 553);
     			attr_dev(div2, "id", "app");
-    			add_location(div2, file, 15, 0, 420);
+    			add_location(div2, file, 16, 0, 467);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -5398,7 +5392,8 @@ var app = (function () {
 
     	const addTab = () => {
     		let id = Math.max(...$tabs.map(t => t.id)) + 1;
-    		tabs.update(t => [...t, { id, content: NodeEditor }]);
+    		let newNodeEditor = new NodeEditor();
+    		tabs.update(t => [...t, { id, content: newNodeEditor }]);
     		activeTab.set(id);
     	};
 
@@ -5450,33 +5445,33 @@ var app = (function () {
     /* src/App.svelte generated by Svelte v3.59.2 */
 
     function create_fragment(ctx) {
-    	let tabs;
+    	let nodeeditor;
     	let current;
-    	tabs = new Tabs({ $$inline: true });
+    	nodeeditor = new NodeEditor({ $$inline: true });
 
     	const block = {
     		c: function create() {
-    			create_component(tabs.$$.fragment);
+    			create_component(nodeeditor.$$.fragment);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			mount_component(tabs, target, anchor);
+    			mount_component(nodeeditor, target, anchor);
     			current = true;
     		},
     		p: noop,
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(tabs.$$.fragment, local);
+    			transition_in(nodeeditor.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
-    			transition_out(tabs.$$.fragment, local);
+    			transition_out(nodeeditor.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(tabs, detaching);
+    			destroy_component(nodeeditor, detaching);
     		}
     	};
 
@@ -5500,7 +5495,7 @@ var app = (function () {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<App> was created with unknown prop '${key}'`);
     	});
 
-    	$$self.$capture_state = () => ({ Tabs });
+    	$$self.$capture_state = () => ({ Tabs, NodeEditor });
     	return [];
     }
 
