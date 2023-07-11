@@ -15,7 +15,7 @@ Before running the Electron app, make sure you have the following dependencies i
 3. Run the following command to install the dependencies:
 
    ```shell
-   npm install rete svelte
+   npm install 
     ```
 ## Usage
 
