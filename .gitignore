@@ -92,4 +92,4 @@ typings/
 out/
 
 # Build directory
-public/build/
+build/
