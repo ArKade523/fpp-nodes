@@ -1,6 +1,6 @@
-# Electron App for FPrime Flight Software Framework
+# F' FPP Modeling Language Graphical Interface
 
-This Electron app is designed to interface with the FPrime flight software framework. It provides functionality to generate .fpp files and graphically display the topology of the component-based design.
+This Electron app is designed to interface with the F' (F-Prime) flight software framework. It provides functionality to generate .fpp files and graphically display the topology of the component-based design.
 
 ## Prerequisites
 
