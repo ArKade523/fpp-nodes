@@ -4,6 +4,7 @@
   import ConnectionPlugin from 'rete-connection-plugin';
   import AlightRenderPlugin from 'rete-alight-render-plugin';
   import AreaPlugin from 'rete-area-plugin';
+  import { createControlClass, createComponentClass } from './createComponentClasses.js'
   import NumComponent from './components/NumComponent.js';
   import TextInputComponent from './components/TextInputComponent.js';
 
@@ -74,23 +75,25 @@
 
     const engine = new Rete.Engine('demo@0.1.0');
 
-    const components = [new NumComponent(), new TextInputComponent()];
     components.forEach(c => {
       editor.register(c);
       engine.register(c);
     });
   });
 </script>
-
-<div id="rete">
-  <input type="file" on:change={onFileChange} accept=".json" />
-  <select bind:value={selectedNodeType}>
-    <option disabled selected value> -- select a node type -- </option>
-    {#each components as component (component.name)}
-      <option>{component.name}</option>
-    {/each}
-  </select>
-  <button on:click={addNode}>Add Node</button>
-  <button on:click={loadFile}>Load</button>
-  <button on:click={exportData}>Export</button>
+<div id="node-editor">
+  <div id="toolbar">
+    <label for="file-import" id="file-import-label">Import.json</label>
+    <input id="file-import" type="file" on:change={onFileChange} accept=".json" />
+    <button on:click={loadFile}>Load</button>
+    <select bind:value={selectedNodeType}>
+      <option disabled selected value> -- select a node type -- </option>
+      {#each components as component (component.name)}
+        <option>{component.name}</option>
+      {/each}
+    </select>
+    <button on:click={addNode}>Add Node</button>
+    <button on:click={exportData}>Export</button>
+  </div>
+  <div id="rete"></div>
 </div>

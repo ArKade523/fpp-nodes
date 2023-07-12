@@ -1,6 +1,4 @@
 <script>
-	import Tabs from './Tabs.svelte';
-	import NodeEditor from './NodeEditor.svelte';
+	import Tabs from './Tabs/Tabs.svelte';
 </script>
-  
-<NodeEditor /> 
+<Tabs />  
