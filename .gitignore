@@ -93,3 +93,5 @@ out/
 
 # Build directory
 build/
+
+src/components-json/*.json

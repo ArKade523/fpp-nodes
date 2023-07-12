@@ -108,6 +108,14 @@ div.tab-content.active {
 	color: lightgray;
 }
 
+#tabs #logo {
+	position: fixed;
+	top: .5rem;
+	right: .5rem;
+	height: 2rem;
+	width: auto;
+}
+
 #node-editor {
 	height: 100%;
 	width: 100%;
