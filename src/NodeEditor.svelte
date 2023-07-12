@@ -4,10 +4,13 @@
   import ConnectionPlugin from 'rete-connection-plugin';
   import AlightRenderPlugin from 'rete-alight-render-plugin';
   import AreaPlugin from 'rete-area-plugin';
-  import { createControlClass, createComponentClass } from './createComponentClasses.js'
+  import { createControlClass, createComponentClass, serializeComponentClass } from './createComponentClasses.js'
   import NumComponent from './components/NumComponent.js';
   import TextInputComponent from './components/TextInputComponent.js';
+  
+  const { ipcRenderer } = window.require('electron');
 
+  let componentDir = './components'
   let editor;
   let file;
   let nodeCount = 1;
@@ -16,6 +19,53 @@
   // this is an array of component classes now
   let componentClasses = [NumComponent, TextInputComponent];
   let components = componentClasses.map(ComponentClass => new ComponentClass());
+
+  let newComponentName = '';
+  let newComponentSocketType = '';
+
+  const createComponent = async () => {
+    if (!newComponentName || !newComponentSocketType) return;
+    
+    // Create a new control class
+    const NewControlClass = createControlClass(newComponentName, newComponentSocketType, false);
+
+    // Create a new component class using the new control class
+    const NewComponentClass = createComponentClass(newComponentName, NewControlClass);
+
+    // Add the new component to the editor
+    addComponent(NewComponentClass);
+
+    // Reset the input fields
+    newComponentName = '';
+    newComponentSocketType = '';
+
+    // Save the new component class as a JSON file
+    const newComponent = {
+      name: newComponentName,
+      socketType: newComponentSocketType
+    };
+    await ipcRenderer.invoke('write-component', newComponent);
+
+    // Load the components from the file system
+    loadComponents();
+  };
+
+  const loadComponents = async () => {
+    const loadedComponents = await ipcRenderer.invoke('read-components');
+
+    // Update your application state with the loaded components
+    loadedComponents.forEach(comp => {
+      // Create a new control class
+      const NewControlClass = createControlClass(comp.name, comp.socketType, false);
+
+      // Create a new component class using the new control class
+      const NewComponentClass = createComponentClass(comp.name, NewControlClass);
+
+      // Add the new component to the list
+      addComponent(NewComponentClass);
+    });
+  };
+
 
   const addNode = async () => {
     const component = components.find(c => c.name === selectedNodeType);
@@ -35,6 +85,8 @@
 
   const onFileChange = event => {
     file = event.target.files[0];
+
+    loadFile();
   };
 
   const loadFile = async () => {
@@ -73,19 +125,23 @@
     editor.use(AlightRenderPlugin);
     editor.use(AreaPlugin);
 
+    // load the components from the file system
+    await loadComponents(); 
+
     const engine = new Rete.Engine('demo@0.1.0');
 
     components.forEach(c => {
       editor.register(c);
       engine.register(c);
     });
+
   });
+
 </script>
 <div id="node-editor">
   <div id="toolbar">
     <label for="file-import" id="file-import-label">Import.json</label>
     <input id="file-import" type="file" on:change={onFileChange} accept=".json" />
-    <button on:click={loadFile}>Load</button>
     <select bind:value={selectedNodeType}>
       <option disabled selected value> -- select a node type -- </option>
       {#each components as component (component.name)}

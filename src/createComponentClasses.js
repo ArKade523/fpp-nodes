@@ -65,3 +65,19 @@ export function createComponentClass(componentName, controlName, socketType, isR
         }
     };
 }
+
+export function serializeComponentClass(componentClass) {
+    const { name, inputs, outputs, controls } = componentClass.prototype;
+    const serializedComponent = {
+      name,
+      inputs: inputs.map(input => ({ name: input.name, socket: input.socket.name })),
+      outputs: outputs.map(output => ({ name: output.name, socket: output.socket.name })),
+      controls: controls.map(control => ({
+        name: control.name,
+        socket: control.socket.name,
+        readonly: control.readonly,
+      })),
+    };
+  
+    return JSON.stringify(serializedComponent, null, 2);
+}
