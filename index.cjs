@@ -5,7 +5,10 @@ app.on("ready", () => {
   const mainWindow = new BrowserWindow({
     height: 800,
     width: 1200,
-    icon: path.join(__dirname, "public/fprime.png"),
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    }
   });
   mainWindow.loadFile(path.join(__dirname, "public/index.html"));
   mainWindow.webContents.openDevTools();
