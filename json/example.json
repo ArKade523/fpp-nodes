@@ -15,22 +15,34 @@
               "data": {}
             }
           ]
+        },
+        "num2": {
+          "connections": [
+            {
+              "node": 2,
+              "output": "num2",
+              "data": {}
+            }
+          ]
         }
       },
       "outputs": {
         "num": {
           "connections": [
             {
-              "node": 2,
+              "node": 3,
               "input": "num1",
               "data": {}
             }
           ]
+        },
+        "num2": {
+          "connections": []
         }
       },
       "position": [
-        80,
-        200
+        317.96873474121094,
+        68.04244995117188
       ],
       "name": "Number"
     },
@@ -41,13 +53,10 @@
       },
       "inputs": {
         "num1": {
-          "connections": [
-            {
-              "node": 1,
-              "output": "num",
-              "data": {}
-            }
-          ]
+          "connections": []
+        },
+        "num2": {
+          "connections": []
         }
       },
       "outputs": {
@@ -57,13 +66,166 @@
               "node": 1,
               "input": "num1",
               "data": {}
+            },
+            {
+              "node": 4,
+              "input": "num1",
+              "data": {}
+            }
+          ]
+        },
+        "num2": {
+          "connections": [
+            {
+              "node": 4,
+              "input": "num2",
+              "data": {}
+            },
+            {
+              "node": 1,
+              "input": "num2",
+              "data": {}
             }
           ]
         }
       },
       "position": [
-        80,
-        400
+        -12.775588989257812,
+        233.67910766601562
+      ],
+      "name": "Number"
+    },
+    "3": {
+      "id": 3,
+      "data": {
+        "num": 1
+      },
+      "inputs": {
+        "num1": {
+          "connections": [
+            {
+              "node": 1,
+              "output": "num",
+              "data": {}
+            }
+          ]
+        },
+        "num2": {
+          "connections": [
+            {
+              "node": 4,
+              "output": "num",
+              "data": {}
+            }
+          ]
+        }
+      },
+      "outputs": {
+        "num": {
+          "connections": []
+        },
+        "num2": {
+          "connections": []
+        }
+      },
+      "position": [
+        727.4919738769531,
+        120.61465454101562
+      ],
+      "name": "Number"
+    },
+    "4": {
+      "id": 4,
+      "data": {
+        "num": 1
+      },
+      "inputs": {
+        "num1": {
+          "connections": [
+            {
+              "node": 2,
+              "output": "num",
+              "data": {}
+            }
+          ]
+        },
+        "num2": {
+          "connections": [
+            {
+              "node": 2,
+              "output": "num2",
+              "data": {}
+            }
+          ]
+        }
+      },
+      "outputs": {
+        "num": {
+          "connections": [
+            {
+              "node": 3,
+              "input": "num2",
+              "data": {}
+            }
+          ]
+        },
+        "num2": {
+          "connections": [
+            {
+              "node": 5,
+              "input": "num2",
+              "data": {}
+            },
+            {
+              "node": 5,
+              "input": "num1",
+              "data": {}
+            }
+          ]
+        }
+      },
+      "position": [
+        312.25878609612573,
+        430.0328979263102
+      ],
+      "name": "Number"
+    },
+    "5": {
+      "id": 5,
+      "data": {
+        "num": 2
+      },
+      "inputs": {
+        "num1": {
+          "connections": [
+            {
+              "node": 4,
+              "output": "num2",
+              "data": {}
+            }
+          ]
+        },
+        "num2": {
+          "connections": [
+            {
+              "node": 4,
+              "output": "num2",
+              "data": {}
+            }
+          ]
+        }
+      },
+      "outputs": {
+        "num": {
+          "connections": []
+        },
+        "num2": {
+          "connections": []
+        }
+      },
+      "position": [
+        738.4560546875,
+        429.4896240234375
       ],
       "name": "Number"
     }
