@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import Rete from "rete";
   import ConnectionPlugin from 'rete-connection-plugin';
   import AlightRenderPlugin from 'rete-alight-render-plugin';
@@ -135,6 +135,15 @@
       engine.register(c);
     });
 
+    ipcRenderer.on('component-dir-changed', (event, eventType, filename) => {
+      console.log(`Event: ${eventType}, File: ${filename}`);
+      loadComponents();
+    });
+
+  });
+
+  onDestroy(() => {
+    ipcRenderer.removeAllListeners('component-dir-changed');
   });
 
 </script>

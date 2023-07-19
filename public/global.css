@@ -146,3 +146,31 @@ div.tab-content.active {
 	bottom: 3.25rem;
 	position: absolute;
 }
+
+#component-creator {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	width: 100%;
+}
+
+#component-creator-form {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: flex-start;
+	background: rgba(110, 136, 255, 0.8);
+	color: white;
+	font-weight: bold;
+	padding: 1rem;
+	border-radius: 0.5rem;
+	border: 2px solid #4e58bf;
+}
+
+#component-creator-form input::placeholder,
+#component-creator-form input {
+	background: none;
+	color: #eee;
+	border: none;
+}

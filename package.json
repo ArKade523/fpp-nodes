@@ -16,7 +16,7 @@
     "@rollup/plugin-node-resolve": "^15.0.0",
     "@rollup/plugin-terser": "^0.4.0",
     "electron": "^25.2.0",
-    "electron-builder": "^22.14.5",
+    "electron-builder": "^24.4.0",
     "rollup": "^3.15.0",
     "rollup-plugin-css-only": "^4.3.0",
     "rollup-plugin-livereload": "^2.0.0",
@@ -24,6 +24,7 @@
     "svelte": "^3.55.0"
   },
   "dependencies": {
+    "chokidar": "^3.5.3",
     "rete": "^1.5.2",
     "rete-alight-render-plugin": "^0.1.5",
     "rete-area-plugin": "^0.2.1",

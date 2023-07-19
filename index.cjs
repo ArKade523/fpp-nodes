@@ -17,6 +17,14 @@ ipcMain.handle('write-component', (event, component) => {
   fs.writeFileSync(filePath, JSON.stringify(component, null, 2));
 });
 
+ipcMain.handle('watch-component-dir', (event) => {
+  const filePath = path.join(__dirname, 'src/components-json');
+  
+  fs.watch(filePath, (eventType, filename) => {
+    event.reply('component-dir-changed', eventType, filename);
+  });
+});
+
 app.on("ready", () => {
   const mainWindow = new BrowserWindow({
     height: 800,
