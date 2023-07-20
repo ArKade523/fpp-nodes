@@ -19,6 +19,7 @@
   // this is an array of component classes now
   let componentClasses = [NumComponent, TextInputComponent];
   let components = componentClasses.map(ComponentClass => new ComponentClass());
+  let socketTypes = components.map(c => c.socketType);
 
   let newComponentName = '';
   let newComponentSocketType = '';
@@ -53,9 +54,20 @@
   const loadComponents = async () => {
     const loadedComponents = await ipcRenderer.invoke('read-components');
 
+    console.log(loadedComponents);
+    loadedComponents.forEach(comp => {
+      console.log(`Component Name: ${comp.name}`)
+    });
+
     // Update your application state with the loaded components
     loadedComponents.forEach(comp => {
       // Create a new control class
+      for (const port of comp.ports) {
+        // check that port type does not exist in socketTypes already
+        if (!socketTypes.includes(port.type)) {
+          socketTypes.push(port.type);
+        }
+      }
       const NewControlClass = createControlClass(comp.name, comp.socketType, false);
 
       // Create a new component class using the new control class
@@ -64,6 +76,7 @@
       // Add the new component to the list
       addComponent(NewComponentClass);
     });
+
   };
 
 

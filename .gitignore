@@ -95,3 +95,4 @@ out/
 build/
 
 src/components-json/*.json
+fpp/**/*.json

@@ -1,14 +1,41 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const simplifyComponent = require("./simplifyComponent.cjs");
 
-ipcMain.handle('read-components', (event) => {
-  const filePath = path.join(__dirname, 'src/components-json');
-  const files = fs.readdirSync(filePath);
+const findFppJsonFiles = async (dirname) => {
+  if (!dirname.endsWith('/')) dirname = dirname + '/';
+
+  let fppJsonFiles = [];
+
+  const files = await fs.promises.readdir(dirname);
+  for (const file of files) {
+    const filePath = path.join(dirname, file);
+    const stat = await fs.promises.lstat(filePath);
+    
+    if (stat.isDirectory()) {
+      const subdirectoryFiles = await findFppJsonFiles(filePath);
+      fppJsonFiles = fppJsonFiles.concat(subdirectoryFiles);
+    } else {
+      if (file.endsWith('fpp-ast.json')) {
+        console.log(`Found fpp-ast.json file: ${filePath}`);
+        fppJsonFiles.push(filePath);
+      }
+    }
+  }
+
+  return fppJsonFiles;
+};
+
+ipcMain.handle('read-components', async (event) => {
+  // const filePath = path.join(__dirname, 'src/components-json');
+  // recursively read all files in the fpp folder
+  const filePath = path.join(__dirname, 'fpp')
+  const files = await findFppJsonFiles(filePath);
   const components = files.map(file => {
-    const content = fs.readFileSync(path.join(filePath, file), 'utf8');
-    return JSON.parse(content);
+    return simplifyComponent(JSON.parse(fs.readFileSync(file)));
   });
+
   return components;
 });
 
@@ -35,5 +62,5 @@ app.on("ready", () => {
     }
   });
   mainWindow.loadFile(path.join(__dirname, "public/index.html"));
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 });

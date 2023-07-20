@@ -2,16 +2,7 @@
 
 ## Tasks
 
-- [ ] Taskbar
-- [ ] Create tabs to switch between
-- [ ]
-
-## In Progress
-
-- [ ] Create new components
-- [ ]
-
-## Completed
-
-- [ ]
-
+- [X] Taskbar
+- [X] Create tabs to switch between
+- [ ] Convert FPP JSON to more usable JS Objects
+- [ ]  
