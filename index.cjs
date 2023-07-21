@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const simplifyComponent = require("./simplifyComponent.cjs");
+const { exec } = require("child_process");
 
 const findFppJsonFiles = async (dirname) => {
   if (!dirname.endsWith('/')) dirname = dirname + '/';
@@ -27,10 +28,34 @@ const findFppJsonFiles = async (dirname) => {
   return fppJsonFiles;
 };
 
+const runFppToJson = async (dirname) => {
+  let fppFiles = [];
+
+  const files = await fs.promises.readdir(dirname);
+  for (const file of files) {
+    if (file.endsWith('.fpp')) {
+      fppFiles.push(path.join(dirname, file));
+    }
+  }
+
+  for (const file of fppFiles) {
+    console.log(`Running fpp-to-json on file: ${file}`);
+    exec(`mkdir -p ${file.split('.fpp')[0]}`)
+    exec(`fpp-to-json ${file} -s -d ${file.split('.fpp')[0]}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error running fpp-to-json on file: ${file}`);
+        console.error(error);
+        return;
+      }
+    });
+  }
+}
+
 ipcMain.handle('read-components', async (event) => {
   // const filePath = path.join(__dirname, 'src/components-json');
   // recursively read all files in the fpp folder
   const filePath = path.join(__dirname, 'fpp')
+  await runFppToJson(filePath);
   const files = await findFppJsonFiles(filePath);
   const components = files.map(file => {
     return simplifyComponent(JSON.parse(fs.readFileSync(file)));
@@ -54,8 +79,8 @@ ipcMain.handle('watch-component-dir', (event) => {
 
 app.on("ready", () => {
   const mainWindow = new BrowserWindow({
-    height: 800,
-    width: 1200,
+    height: 1080,
+    width: 1920,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,

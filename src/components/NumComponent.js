@@ -56,7 +56,7 @@ export default class NumComponent extends Rete.Component {
         const numControl = new NumControl(this.editor, 'num', false);
 
         return node
-        .addControl(numControl)
+        // .addControl(numControl)
         .addOutput(out1)
         .addOutput(out2) // Add second output to the node
         .addInput(in1)

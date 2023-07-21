@@ -1,83 +1,29 @@
 import Rete from "rete";
-import { numSocket, universalSocket } from "./sockets.js";
-
-// Control class factory function
-export function createControlClass(controlName, socketType, isReadonly) {
-    return class extends Rete.Control {
-        constructor(emitter, key) {
-            super(key);
-            this.render = 'js';
-            this.emitter = emitter;
-            this.key = key;
-            this.template = `<input type="${socketType === numSocket ? 'number' : 'text'}" :readonly="readonly" :value="value" @input="change($event)"/>`;
-
-            this.scope = {
-                value: 0,
-                readonly: isReadonly,
-                change: this.change.bind(this)
-            };
-        }
-        
-        change(e){
-            this.setValue(e.target.value);
-            this.update();
-        }
-
-        update() {
-            if (this.key)
-                this.putData(this.key, parseFloat(this.scope.value))
-        }
-
-        mounted() {
-            this.update();
-        }
-
-        setValue(val) {
-            this.scope.value = val;
-            this._alight.scan();
-        }
-    };
-}
+import { sockets, createSocketType, universalSocket } from "./sockets";
 
 // Component class factory function
-export function createComponentClass(componentName, controlName, socketType, isReadonly) {
-    const ControlClass = createControlClass(controlName, socketType, isReadonly);
-
+export function createComponentClass(component) {
     return class extends Rete.Component {
         constructor(){
-            super(componentName);
+            super(component.name);
         }
 
         builder(node) {
-            let out1 = new Rete.Output('num', "Number", socketType);
-            let in1 = new Rete.Input('num1', "Number", socketType);
+            for (const port of component.ports) {
+                let portTitle = port.name;
+                if (port.type) {
+                    portTitle += ` : ${port.type}`;
+                }
 
-            const control = new ControlClass(this.editor, 'num', false);
+                if (port.kind === 'AsyncInput' || port.kind === 'SyncInput') {
+                    node.addInput(new Rete.Input(port.name, portTitle, universalSocket));
+                } else if (port.kind === 'Output') {
+                    node.addOutput(new Rete.Output(port.name, portTitle, universalSocket));
+                }
+            }
 
-            return node
-            .addControl(control)
-            .addOutput(out1)
-            .addInput(in1)
+            return node;
         }
 
-        worker(node, inputs, outputs) {
-            outputs['num'] = node.data.num;
-        }
     };
-}
-
-export function serializeComponentClass(componentClass) {
-    const { name, inputs, outputs, controls } = componentClass.prototype;
-    const serializedComponent = {
-      name,
-      inputs: inputs.map(input => ({ name: input.name, socket: input.socket.name })),
-      outputs: outputs.map(output => ({ name: output.name, socket: output.socket.name })),
-      controls: controls.map(control => ({
-        name: control.name,
-        socket: control.socket.name,
-        readonly: control.readonly,
-      })),
-    };
-  
-    return JSON.stringify(serializedComponent, null, 2);
 }

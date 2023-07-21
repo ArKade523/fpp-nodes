@@ -18,10 +18,19 @@ const simplifyComponent = fppObject => {
     else if (member[1].SpecPortInstance) {
       if (member[1].SpecPortInstance.node.data.General){
         const port = member[1].SpecPortInstance.node.data.General;
+        let portTypeNamespace = '';
+        let portType = '';
+        if (port.port.Option.Some.data.Qualified) {
+          portTypeNamespace = port.port.Option.Some.data.Qualified.qualifier.data.Unqualified.name;
+          portType = port.port.Option.Some.data.Qualified.name.data;
+        } else if (port.port.Option.Some.data.Unqualified) {
+          portType = port.port.Option.Some.data.Unqualified.name.data;
+        }
+        
         simplifiedComponent.ports.push({
           name: port.name,
           kind: port.kind,
-          type: `${port.port.Option.Some.data.Qualified.qualifier.data.Unqualified.name}.${port.port.Option.Some.data.Qualified.name.data}`
+          type: `${portTypeNamespace}${portType}`
         
         })
       }

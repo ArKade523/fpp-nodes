@@ -4,74 +4,30 @@
   import ConnectionPlugin from 'rete-connection-plugin';
   import AlightRenderPlugin from 'rete-alight-render-plugin';
   import AreaPlugin from 'rete-area-plugin';
-  import { createControlClass, createComponentClass, serializeComponentClass } from './createComponentClasses.js'
+  import { createComponentClass } from './createComponentClasses.js'
   import NumComponent from './components/NumComponent.js';
   import TextInputComponent from './components/TextInputComponent.js';
+  import { sockets, createSocketType, componentSocket } from './sockets.js';
+  import { writable } from 'svelte/store';
   
   const { ipcRenderer } = window.require('electron');
 
-  let componentDir = './components'
   let editor;
   let file;
   let nodeCount = 1;
-  let selectedNodeType = ''; // will hold the selected node type
+  let selectedNodeType = writable(''); // will hold the selected node type
 
   // this is an array of component classes now
   let componentClasses = [NumComponent, TextInputComponent];
-  let components = componentClasses.map(ComponentClass => new ComponentClass());
-  let socketTypes = components.map(c => c.socketType);
-
-  let newComponentName = '';
-  let newComponentSocketType = '';
-
-  const createComponent = async () => {
-    if (!newComponentName || !newComponentSocketType) return;
-    
-    // Create a new control class
-    const NewControlClass = createControlClass(newComponentName, newComponentSocketType, false);
-
-    // Create a new component class using the new control class
-    const NewComponentClass = createComponentClass(newComponentName, NewControlClass);
-
-    // Add the new component to the editor
-    addComponent(NewComponentClass);
-
-    // Reset the input fields
-    newComponentName = '';
-    newComponentSocketType = '';
-
-    // Save the new component class as a JSON file
-    const newComponent = {
-      name: newComponentName,
-      socketType: newComponentSocketType
-    };
-    await ipcRenderer.invoke('write-component', newComponent);
-
-    // Load the components from the file system
-    loadComponents();
-  };
+  export let components = writable(componentClasses.map(ComponentClass => new ComponentClass()));
 
   const loadComponents = async () => {
     const loadedComponents = await ipcRenderer.invoke('read-components');
 
-    console.log(loadedComponents);
-    loadedComponents.forEach(comp => {
-      console.log(`Component Name: ${comp.name}`)
-    });
-
     // Update your application state with the loaded components
     loadedComponents.forEach(comp => {
-      // Create a new control class
-      for (const port of comp.ports) {
-        // check that port type does not exist in socketTypes already
-        if (!socketTypes.includes(port.type)) {
-          socketTypes.push(port.type);
-        }
-      }
-      const NewControlClass = createControlClass(comp.name, comp.socketType, false);
-
       // Create a new component class using the new control class
-      const NewComponentClass = createComponentClass(comp.name, NewControlClass);
+      const NewComponentClass = createComponentClass(comp);
 
       // Add the new component to the list
       addComponent(NewComponentClass);
@@ -81,19 +37,25 @@
 
 
   const addNode = async () => {
-    const component = components.find(c => c.name === selectedNodeType);
-    if (!component) return;
-
+    let componentArray;
+    components.subscribe(data => componentArray = data);
+    const component = componentArray.find(c => c.name === selectedNodeType);
+    if (!component) {
+      console.error(`Component ${selectedNodeType} not found`);
+      return;
+    }
+    
     const node = await component.createNode({ num: nodeCount++ });
     node.position = [80 * nodeCount, 200];
     editor.addNode(node);
   };
 
   const addComponent = ComponentClass => {
+    if (componentClasses.includes(ComponentClass)) return;
     componentClasses.push(ComponentClass);
     const newComponent = new ComponentClass();
-    components.push(newComponent);
-    editor.register(newComponent);
+    components.update(arr => [...arr, newComponent]);
+    // editor.register(newComponent);
   };
 
   const onFileChange = event => {
@@ -143,10 +105,12 @@
 
     const engine = new Rete.Engine('demo@0.1.0');
 
-    components.forEach(c => {
+    let componentArray;
+    components.subscribe(data => componentArray = data);
+    for (const c of componentArray) {
       editor.register(c);
       engine.register(c);
-    });
+    }
 
     ipcRenderer.on('component-dir-changed', (event, eventType, filename) => {
       console.log(`Event: ${eventType}, File: ${filename}`);
@@ -166,7 +130,7 @@
     <input id="file-import" type="file" on:change={onFileChange} accept=".json" />
     <select bind:value={selectedNodeType}>
       <option disabled selected value> -- select a node type -- </option>
-      {#each components as component (component.name)}
+      {#each $components as component}
         <option>{component.name}</option>
       {/each}
     </select>
