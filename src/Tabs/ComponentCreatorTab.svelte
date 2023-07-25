@@ -1,9 +1,11 @@
 <script>
-    export let isActive = false;
-    import ComponentCreator from "../ComponentCreator.svelte";
+    export let isActive = false
+    import CodeEditor from "../CodeEditor.svelte";
 </script>
 
 <div class="tab-content" class:active={isActive}>
-    <ComponentCreator />
+    {#if isActive}
+        <CodeEditor />
+    {/if}
 </div>
 

@@ -4,5 +4,5 @@
 
 - [X] Taskbar
 - [X] Create tabs to switch between
-- [ ] Convert FPP JSON to more usable JS Objects
+- [X] Convert FPP JSON to more usable JS Objects
 - [ ]  

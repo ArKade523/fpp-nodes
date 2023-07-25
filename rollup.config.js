@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import css from 'rollup-plugin-css-only';
+import postcss from 'rollup-plugin-postcss';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -47,6 +48,18 @@ export default {
 		// we'll extract any component CSS out into
 		// a separate file - better for performance
 		css({ output: 'bundle.css' }),
+		
+		// postcss({
+		// 	extract: true,
+		// 	minimize: true,
+		// 	use: [
+		// 	  ['sass', {
+		// 			includePaths: [
+		// 				'./node_modules'
+		// 			]
+		// 		}]
+		// 	]
+		// }),
 
 		// If you have external dependencies installed from
 		// npm, you'll most likely need these plugins. In
@@ -56,7 +69,7 @@ export default {
 		resolve({
 			browser: true,
 			dedupe: ['svelte'],
-			exportConditions: ['svelte']
+			exportConditions: ['svelte', '.svelte']
 		}),
 		commonjs(),
 
@@ -72,6 +85,12 @@ export default {
 		// instead of npm run dev), minify
 		production && terser()
 	],
+	onwarn: function (warning, superOnWarn) {
+		if (warning.code === 'THIS_IS_UNDEFINED') {
+			return;
+		}
+		superOnWarn(warning);
+	},
 	watch: {
 		clearScreen: false
 	}

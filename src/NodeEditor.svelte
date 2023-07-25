@@ -1,4 +1,4 @@
-<script>
+<script defer>
   import { onMount, onDestroy } from 'svelte';
   import Rete from "rete";
   import ConnectionPlugin from 'rete-connection-plugin';
@@ -7,8 +7,8 @@
   import { createComponentClass } from './createComponentClasses.js'
   import NumComponent from './components/NumComponent.js';
   import TextInputComponent from './components/TextInputComponent.js';
-  import { sockets, createSocketType, componentSocket } from './sockets.js';
   import { writable } from 'svelte/store';
+  import { nodeEditorGlobals } from './stores.js'
   
   const { ipcRenderer } = window.require('electron');
 
@@ -22,17 +22,21 @@
   export let components = writable(componentClasses.map(ComponentClass => new ComponentClass()));
 
   const loadComponents = async () => {
-    const loadedComponents = await ipcRenderer.invoke('read-components');
-
-    // Update your application state with the loaded components
-    loadedComponents.forEach(comp => {
-      // Create a new component class using the new control class
-      const NewComponentClass = createComponentClass(comp);
-
-      // Add the new component to the list
-      addComponent(NewComponentClass);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const loadedComponents = await ipcRenderer.invoke('read-components');
+            // Update your application state with the loaded components
+            loadedComponents.forEach(comp => {
+                // Create a new component class using the new control class
+                const NewComponentClass = createComponentClass(comp);
+                // Add the new component to the list
+                addComponent(NewComponentClass);
+            });
+            resolve(); // Resolve the promise when done
+        } catch (error) {
+            reject(error); // Reject the promise on error
+        }
     });
-
   };
 
 
@@ -51,7 +55,12 @@
   };
 
   const addComponent = ComponentClass => {
-    if (componentClasses.includes(ComponentClass)) return;
+    // Check if a component with the same name already exists
+    let componentArray;
+    components.subscribe(data => componentArray = data);
+    if (componentArray.some(c => c.name === ComponentClass.name)) return;
+
+    // Add the new component to the list
     componentClasses.push(ComponentClass);
     const newComponent = new ComponentClass();
     components.update(arr => [...arr, newComponent]);
@@ -60,6 +69,8 @@
 
   const onFileChange = event => {
     file = event.target.files[0];
+
+    // console.log(file.path);
 
     loadFile();
   };
@@ -70,6 +81,7 @@
     const fileReader = new FileReader();
     fileReader.onload = async (event) => {
       const jsonData = JSON.parse(event.target.result);
+      nodeEditorGlobals.currentTopology = jsonData;
       await editor.fromJSON(jsonData);
     };
     fileReader.readAsText(file);
@@ -101,17 +113,22 @@
     editor.use(AreaPlugin);
 
     // load the components from the file system
-    await loadComponents(); 
-
+    await loadComponents();
+    
     const engine = new Rete.Engine('demo@0.1.0');
-
+    
     let componentArray;
     components.subscribe(data => componentArray = data);
     for (const c of componentArray) {
       editor.register(c);
       engine.register(c);
     }
-
+    
+    // load the topology from the global variable
+    if (nodeEditorGlobals.currentTopology) {
+        await editor.fromJSON(nodeEditorGlobals.currentTopology);
+    }
+    
     ipcRenderer.on('component-dir-changed', (event, eventType, filename) => {
       console.log(`Event: ${eventType}, File: ${filename}`);
       loadComponents();

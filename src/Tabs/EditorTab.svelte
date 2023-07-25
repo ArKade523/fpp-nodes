@@ -4,5 +4,7 @@
 </script>
 
 <div class="tab-content" class:active={isActive}>
-    <NodeEditor />
+    {#if isActive}
+        <NodeEditor />
+    {/if}
 </div>

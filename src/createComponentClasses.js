@@ -1,9 +1,14 @@
 import Rete from "rete";
 import { sockets, createSocketType, universalSocket } from "./sockets";
 
-// Component class factory function
+let componentClassCache = new Map();
+
 export function createComponentClass(component) {
-    return class extends Rete.Component {
+    if(componentClassCache.has(component.name)){
+        return componentClassCache.get(component.name);
+    } 
+
+    let newClass = class extends Rete.Component {
         constructor(){
             super(component.name);
         }
@@ -26,4 +31,7 @@ export function createComponentClass(component) {
         }
 
     };
+
+    componentClassCache.set(component.name, newClass);
+    return newClass;
 }
