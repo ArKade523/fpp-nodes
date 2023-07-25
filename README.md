@@ -24,10 +24,10 @@ Before running the Electron app, make sure you have the following dependencies i
 To start the Electron app, run the following command:
 
 ```shell
-npm start
+npm run dev
 ```
 
-To import an example JSON file, import the file located at
-```
-<cloned-directory>/json/example.json
-```
+__The FPP-to-JSON tool must be installed on your machine and available in your path.__
+Follow the installation instructions here[https://github.com/elliotfayman/fpp/tree/fpptojson/compiler]
+
+Make sure that you clone the `fpptojson` branch before running the installer
