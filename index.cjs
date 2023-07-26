@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const simplifyComponent = require("./utils/simplifyComponent.cjs");
 const { findFppJsonFiles, runFppToJson } = require("./utils/handleFppFiles.cjs");
 const getFiles = require("./utils/getFiles.cjs");
+const { template, aboutOptions } = require("./utils/menuOptions.cjs");
 
 ipcMain.handle('read-components', async (event) => {
   // const filePath = path.join(__dirname, 'src/components-json');
@@ -62,6 +63,24 @@ ipcMain.on('write-file', (event, path, data) => {
   });
 });
 
+ipcMain.on('create-new-file', (event, path, fileName) => {
+  fs.writeFile(`${path}/${fileName}`, '', function (err) {
+      if (err) throw err;
+      console.log('File is created successfully.');
+      const filesObject = getFiles(path);
+      event.sender.send('file-list', filesObject);
+  }); 
+});
+
+ipcMain.on('create-new-folder', (event, path, fileName) => {
+  fs.mkdir(`${path}/${fileName}`, { recursive: true }, (err) => {
+      if (err) throw err;
+      console.log('Folder is created successfully.');
+      const filesObject = getFiles(path);
+      event.sender.send('file-list', filesObject);
+  });
+});
+
 app.on("ready", () => {
   const mainWindow = new BrowserWindow({
     height: 1080,
@@ -71,6 +90,11 @@ app.on("ready", () => {
       contextIsolation: false,
     }
   });
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+  app.setAboutPanelOptions(aboutOptions);
+
   mainWindow.loadFile(path.join(__dirname, "public/index.html"));
   mainWindow.webContents.openDevTools();
 });
