@@ -1,6 +1,6 @@
 <script>
-    import ComponentCreatorTab from './ComponentCreatorTab.svelte';
-    import EditorTab from './EditorTab.svelte';
+    import CodeEditorTab from './CodeEditorTab.svelte';
+    import NodeEditorTab from './NodeEditorTab.svelte';
   
     let activeTab = 'tab2';
 </script>
@@ -11,6 +11,6 @@
     <img id="logo" src="../public/icons/fprime.png" alt="fprime">
 </div>
   
-<ComponentCreatorTab isActive={activeTab === 'tab1'} />
-<EditorTab isActive={activeTab === 'tab2'} />
+<CodeEditorTab isActive={activeTab === 'tab1'} />
+<NodeEditorTab isActive={activeTab === 'tab2'} />
  
