@@ -5,7 +5,7 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import css from 'rollup-plugin-css-only';
-import postcss from 'rollup-plugin-postcss';
+import sass from 'rollup-plugin-sass';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -49,17 +49,7 @@ export default {
 		// a separate file - better for performance
 		css({ output: 'bundle.css' }),
 		
-		// postcss({
-		// 	extract: true,
-		// 	minimize: true,
-		// 	use: [
-		// 	  ['sass', {
-		// 			includePaths: [
-		// 				'./node_modules'
-		// 			]
-		// 		}]
-		// 	]
-		// }),
+		sass({ output: 'bundle.sass' }),
 
 		// If you have external dependencies installed from
 		// npm, you'll most likely need these plugins. In

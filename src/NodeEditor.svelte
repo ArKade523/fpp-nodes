@@ -5,10 +5,8 @@
   import AlightRenderPlugin from 'rete-alight-render-plugin';
   import AreaPlugin from 'rete-area-plugin';
   import { createComponentClass } from './createComponentClasses.js'
-  import NumComponent from './components/NumComponent.js';
-  import TextInputComponent from './components/TextInputComponent.js';
   import { writable } from 'svelte/store';
-  import { nodeEditorGlobals } from './stores.js'
+  import { currentTopology } from './stores.js'
   
   const { ipcRenderer } = window.require('electron');
 
@@ -18,7 +16,7 @@
   let selectedNodeType = writable(''); // will hold the selected node type
 
   // this is an array of component classes now
-  let componentClasses = [NumComponent, TextInputComponent];
+  let componentClasses = [];
   export let components = writable(componentClasses.map(ComponentClass => new ComponentClass()));
 
   const loadComponents = async () => {
@@ -125,8 +123,8 @@
     }
     
     // load the topology from the global variable
-    if (nodeEditorGlobals.currentTopology) {
-        await editor.fromJSON(nodeEditorGlobals.currentTopology);
+    if (currentTopology) {
+        await editor.fromJSON(currentTopology);
     }
     
     ipcRenderer.on('component-dir-changed', (event, eventType, filename) => {

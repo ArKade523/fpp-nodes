@@ -31,6 +31,8 @@
     "rete-area-plugin": "^0.2.1",
     "rete-connection-plugin": "^0.9.0",
     "rollup-plugin-postcss": "^4.0.2",
+    "rollup-plugin-sass": "^1.12.20",
+    "sass": "^1.64.1",
     "sirv-cli": "^2.0.0"
   },
   "build": {

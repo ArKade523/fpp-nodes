@@ -1,8 +1,6 @@
 import { writable } from 'svelte/store';
 
-export let nodeEditorGlobals = {
-    currentTopology: null,
-}
+export let currentTopology = null;
 
 export let activeFile = writable('');
 export let files = writable();
