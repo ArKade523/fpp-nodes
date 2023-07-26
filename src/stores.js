@@ -9,3 +9,6 @@ export let files = writable();
 
 // A store to hold the open state for each directory
 export let openStates = writable({});
+
+export const newFileName = writable(null);
+export const selectedDirectory = writable(null);
