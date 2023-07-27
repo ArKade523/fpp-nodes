@@ -68,6 +68,8 @@
     onDestroy(() => {
         if (editor)
             editor.dispose();
+
+        ipcRenderer.removeAllListeners('file-data');
     });
 </script>
 

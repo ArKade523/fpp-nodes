@@ -69,6 +69,10 @@
             files.set(fileList);
         });
     });
+
+    onDestroy(() => {
+        ipcRenderer.removeAllListeners('file-list');
+    });
 </script>
 
 <style>
