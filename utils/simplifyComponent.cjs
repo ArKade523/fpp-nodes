@@ -4,17 +4,38 @@ const simplifyComponent = file => {
   const fppObject = JSON.parse(fs.readFileSync(file));
   const simplifiedComponent = {
     name: '',
+    module: '',
     kind: '',
     ports: [],
     id: '',
     locMap: {}
   };
 
-  let parentOfComponent = fppObject[0].members[0][1];
+  let parentOfComponent = null;
 
   // check if the component is inside of a module
   if (fppObject[0].members[0][1].DefModule) {
-    parentOfComponent = fppObject[0].members[0][1].DefModule.node.astNode.data.members[0][1];
+    simplifiedComponent.module = fppObject[0].members[0][1].DefModule.node.astNode.data.name;
+    // search for the component inside of the module
+    for (const member of fppObject[0].members[0][1].DefModule.node.astNode.data.members) {
+      for (const submember of member) {
+        if (submember.DefComponent) {
+          parentOfComponent = submember;
+          break;
+        }
+      }
+    }
+  } else {
+    for (const member of fppObject[0].members) {
+      for (const submember of member) {
+        if (submember.DefComponent) {
+          parentOfComponent = submember;
+          break;
+        }
+      }
+    }
+
+    if (parentOfComponent === null) throw new Error('Component not found');
   }
 
   const componentNode = parentOfComponent.DefComponent.node.astNode.data;
