@@ -5,7 +5,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { writable } from 'svelte/store';
-    import { activeFile, files } from './stores.js';
+    import { activeFile, files } from './utils/stores.js';
     import FileList from './FileList.svelte';
     const { ipcRenderer } = window.require('electron');
     

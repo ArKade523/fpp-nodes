@@ -8,5 +8,7 @@ module Components {
         
         output port testOut: Fw.Buffer
 
+        output port testOut2: Fw.Buffer
+
     }
 }

@@ -1,0 +1,59 @@
+{
+  "id": "demo@0.1.0",
+  "nodes": {
+    "1": {
+      "id": 1,
+      "data": {
+        "num": 1
+      },
+      "inputs": {
+        "A": {
+          "connections": []
+        }
+      },
+      "outputs": {
+        "B": {
+          "connections": [
+            {
+              "node": 2,
+              "input": "A",
+              "data": {}
+            }
+          ]
+        }
+      },
+      "position": [
+        160,
+        200
+      ],
+      "name": "C"
+    },
+    "2": {
+      "id": 2,
+      "data": {
+        "num": 2
+      },
+      "inputs": {
+        "A": {
+          "connections": [
+            {
+              "node": 1,
+              "output": "B",
+              "data": {}
+            }
+          ]
+        }
+      },
+      "outputs": {
+        "B": {
+          "connections": []
+        }
+      },
+      "position": [
+        453.3646801882735,
+        200.13522336624422
+      ],
+      "name": "C"
+    }
+  }
+}

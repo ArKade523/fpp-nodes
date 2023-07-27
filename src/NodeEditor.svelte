@@ -4,20 +4,20 @@
   import ConnectionPlugin from 'rete-connection-plugin';
   import AlightRenderPlugin from 'rete-alight-render-plugin';
   import AreaPlugin from 'rete-area-plugin';
-  import { createComponentClass } from './createComponentClasses.js'
+  import { createComponentClass } from './utils/createComponentClasses.js'
   import { writable } from 'svelte/store';
-  import { currentTopology } from './stores.js'
+  import { currentTopology, editor, components, componentClasses } from './utils/stores.js'
+  import { exportDataToFpp, exportDataToJson } from './utils/exportData.js'
+  import { addNode } from '.utils/addNode.js'
   
   const { ipcRenderer } = window.require('electron');
 
-  let editor;
   let file;
   let nodeCount = 1;
   let selectedNodeType = writable(''); // will hold the selected node type
 
   // this is an array of component classes now
-  let componentClasses = [];
-  export let components = writable(componentClasses.map(ComponentClass => new ComponentClass()));
+  components.set(componentClasses.map(c => new c()));
 
   const loadComponents = async () => {
     return new Promise(async (resolve, reject) => {
@@ -35,34 +35,6 @@
             reject(error); // Reject the promise on error
         }
     });
-  };
-
-
-  const addNode = async () => {
-    let componentArray;
-    components.subscribe(data => componentArray = data);
-    const component = componentArray.find(c => c.name === selectedNodeType);
-    if (!component) {
-      console.error(`Component ${selectedNodeType} not found`);
-      return;
-    }
-    
-    const node = await component.createNode({ num: nodeCount++ });
-    node.position = [80 * nodeCount, 200];
-    editor.addNode(node);
-  };
-
-  const addComponent = ComponentClass => {
-    // Check if a component with the same name already exists
-    let componentArray;
-    components.subscribe(data => componentArray = data);
-    if (componentArray.some(c => c.name === ComponentClass.name)) return;
-
-    // Add the new component to the list
-    componentClasses.push(ComponentClass);
-    const newComponent = new ComponentClass();
-    components.update(arr => [...arr, newComponent]);
-    // editor.register(newComponent);
   };
 
   const onFileChange = event => {
@@ -83,24 +55,6 @@
       await editor.fromJSON(jsonData);
     };
     fileReader.readAsText(file);
-  };
-
-  const exportData = () => {
-    const data = editor.toJSON();
-    const dataStr = JSON.stringify(data, null, 2); // indented with 2 spaces
-    console.log(dataStr);
-
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    // Create a link and click it to start download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'data.json';
-    link.click();
-
-    // Remove the link after triggering download
-    link.remove();
   };
 
   onMount(async () => {
@@ -150,7 +104,8 @@
       {/each}
     </select>
     <button on:click={addNode}>Add Node</button>
-    <button on:click={exportData}>Export</button>
+    <button on:click={exportDataToJson}>Export (JSON)</button>
+    <button on:click={exportDataToFpp}>Export (FPP)</button>
   </div>
   <div id="rete"></div>
 </div>

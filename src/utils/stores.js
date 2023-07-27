@@ -1,6 +1,10 @@
 import { writable } from 'svelte/store';
 
+// NodeEditor stores
 export let currentTopology = null;
+export let editor = null;
+export let componentClasses = [];
+export let components = writable([]);
 
 export let activeFile = writable('');
 export let files = writable();

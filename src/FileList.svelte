@@ -1,7 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { writable } from 'svelte/store';
-    import { activeFile, files, openStates, newFileName, selectedDirectory } from './stores.js';
+    import { activeFile, files, openStates, newFileName, selectedDirectory } from './utils/stores.js';
     const { ipcRenderer } = window.require('electron');
     
     let directoryPath = '/Users/kangell/Documents/repos/fpp-nodes/fpp'; // To hold the directory of the file directory
